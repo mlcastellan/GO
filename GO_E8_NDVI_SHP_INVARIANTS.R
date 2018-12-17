@@ -5,7 +5,7 @@
 ### de ndvi y genera un spatial points        ###
 ### con  esos puntos                          ###
 ### input: raster con invariantes(resto NA)   ###
-### output: shapefile con coordenadas de inv  ###
+### output: shapefile con coordenadas de invS ###
 #################################################
 
 GO_E8_NDVI_INVARIANTS_SHP=function(ndvi_invs){
