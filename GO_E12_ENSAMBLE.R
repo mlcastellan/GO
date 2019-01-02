@@ -235,17 +235,18 @@ GO_E5_NDVI_MEAN_SD=function(ndvi_dir="NDVI/Trim/",ndvi_mean_out="NDVI/Mean/NDVI_
 #percentil=0.99
 #ndvi_mean_stack=stack(mean,sd)
 ###
-GO_E6_NDVI_INVARIANTS=function(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./NDVI/NDVI_sd.tif"),percentil=0.99){
+GO_E6_NDVI_INVARIANTS=function(mean="./NDVI/Mean/NDVI_mean.tif",sd="./NDVI/Mean/NDVI_sd.tif",percentil=0.99){
   library(raster)
   library(stringr)
   #########
-  ndvi_mean_stack=stack(mean,stack)
+  mean=raster(mean)
+  sd=raster(sd)
+  ndvi_mean_stack=stack(mean,sd)
   ##---busco la resolucion del stack
   res=as.numeric(str_split(res(mean),pattern=" ",n=1)[[1]])
   ##---calculo el factor para cambiar resolucion
   new_res=10.00/res
   ndvi_sd_10m=aggregate(ndvi_mean_stack,fact=new_res,fun=median)#####. cambio resolucion con mediana no con mean
-  writeRaster(ndvi_sd_10m,filename ="NDVI/NDVI_stack_sentinel_10m.tif",format="GTiff",overwrite=TRUE)
   ##----calculo de ndvi, a posterior usar la funcion de ndvi que esta ya programada
   #ndvi_10m=(stack_10m[[4]]-stack_10m[[3]])/(stack_10m[[3]]+stack_10m[[4]])
   #########
@@ -264,14 +265,13 @@ GO_E6_NDVI_INVARIANTS=function(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./
   inv_alto<-overlay(ndvi_sd_10m,fun=function(x,y){ifelse(x>=ndvi_alto&y<=sd_ndvi,x,NA)})
   writeRaster(inv_alto,filename=dir_out_1,format="GTiff",overwrite=TRUE)
   ##---extraigo los puntos de ndvi bajo
-  dir_out_1="Invariants/Rasters/NDVI_bajo_INV.tif"
+  dir_out_2="Invariants/Rasters/NDVI_bajo_INV.tif"
   inv_bajo<-overlay(ndvi_sd_10m,fun=function(x,y){ifelse(x<=ndvi_bajo&y<=sd_ndvi,x,NA)})
   writeRaster(inv_bajo,filename=dir_out_2,format="GTiff",overwrite=TRUE)
   ##---- exporto los invariantes
   ndvi_invs=stack(inv_alto,inv_bajo)
   return(ndvi_invs)
 }
-############### fin de la funcion #########
 
 ####################################################
 ####################################################
@@ -315,6 +315,8 @@ GO_11_NDVI_NQTY=function(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./NDVI/N
   #setvalues(ndvi_mean_stack[[2]],interest_sd_values)
   return(ndvi_invs)
 }
+
+############### fin de la funcion #########
 
 ####################################################
 ####################################################
