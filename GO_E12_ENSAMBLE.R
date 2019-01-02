@@ -7,8 +7,8 @@ GO_E3_NDVI_SEN2COR(sentinel_2_folder="/home/martin-r/05_Rasters/SENTINEL_HDE_inv
 ###### PASO 2 RECORTAR NDVI--->GO_E4_PROJECT_TRIM
 multi_crop(raster_folder="NDVI/Full/",out_dir="NDVI/Trim/",SHP_folder="SHP_IN")
 ###### PASO 3 CALCULO DE MEDIA-SD --->GO_E5_NDVI_MEAN_SD
-ndvi_mean_sd=GO_E5_NDVI_MEAN_SD(ndvi_dir="NDVI/Trim")
-###### ELEGIR PARA CADA CASO CUAL USAR---------------------------
+GO_E5_NDVI_MEAN_SD(ndvi_dir="NDVI/Trim/",ndvi_mean_out="NDVI/Mean/NDVI_mean.tif",ndvi_sd_out="NDVI/Mean/NDVI_sd.tif")
+  ###### ELEGIR PARA CADA CASO CUAL USAR---------------------------
 ###### PASO 4A INVARIANTES POR PERCENTIL--->GO_E6_NDVI_INVARIANTS
 ndvi_invs=GO_E6_NDVI_INVARIANTS(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./NDVI/NDVI_sd.tif"),percentil=0.99)
 ###### PASO 4B INVARIANTES POR CANTIDAD--->GO_E11_NDVI_INVARIANTS
@@ -190,7 +190,8 @@ multi_crop=function(raster_folder="NDVI/Full",out_dir="NDVI/Trim/",shape=shp){
 ### input: carpeta con rasters ndvi       ###
 ### output: raster media y raster sd      ###
 #############################################
-GO_E5_NDVI_MEAN_SD=function(ndvi_dir="NDVI/Trim"){
+
+GO_E5_NDVI_MEAN_SD=function(ndvi_dir="NDVI/Trim/",ndvi_mean_out="NDVI/Mean/NDVI_mean.tif",ndvi_sd_out="NDVI/Mean/NDVI_sd.tif"){
   ##
   library(raster)
   library(sp)
@@ -198,26 +199,23 @@ GO_E5_NDVI_MEAN_SD=function(ndvi_dir="NDVI/Trim"){
   ## genero una lista de los ndvi en ndvi_dir
   ndvi_files <- list.files(ndvi_dir,pattern=".tif$",ignore.case=TRUE,full.names=TRUE)
   ## genero un stack con los ndvi unibanda
-  ndvi_stack=stack(ndvi_files)
+  ndvi_stack=raster::stack(ndvi_files)
   ## habilito procesamiento en paralelo
   #cores <- 4
   #beginCluster(cores, type='SOCK')
   ## calculo para ndvi_stack la media
-  ndvi_mean=raster::calc(ndvi_stack,fun=mean)
+  ndvi_mean=raster::calc(ndvi_stack,fun=mean,na.rm=TRUE)
   ## calculo para ndvi_stack la SD
   ndvi_sd=raster::calc(ndvi_stack,fun=sd)
   ## deabilito el cluster
   #endCluster()
   ## genero un stack con mean y sd
   ndvi_mean_stack=stack(ndvi_mean,ndvi_sd)
+  ## exporto la media y SD idividualmente para control
+  writeRaster(ndvi_mean,filename=file.path(getwd(),ndvi_mean_out), bylayer=TRUE,format="GTiff",overwrite=TRUE)
+  writeRaster(ndvi_sd,filename=file.path(getwd(),ndvi_sd_out), bylayer=TRUE,format="GTiff",overwrite=TRUE)
   ## la funcion devuelve el raster stack
   return(ndvi_mean_stack)
-  ## exporto la media y SD idividualmente para control
-  ndvi_mean_out=paste(getwd(),"/NDVI/Mean/NDVI_mean.tif",sep="")
-  ndvi_sd_out=paste(getwd(),"/NDVI/Mean/NDVI_sd.tif",sep="")
-  writeRaster(ndvi_mean,filename=ndvi_mean_out,format="GTiff",overwrite=TRUE)
-  writeRaster(ndvi_sd,filename=ndvi_sd_out,format="GTiff",overwrite=TRUE)
-  
 }
 ############### fin de la funcion #########
 
