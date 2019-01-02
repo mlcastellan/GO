@@ -8,15 +8,16 @@ GO_E3_NDVI_SEN2COR(sentinel_2_folder="/home/martin-r/05_Rasters/SENTINEL_HDE_inv
 multi_crop(raster_folder="NDVI/Full/",out_dir="NDVI/Trim/",SHP_folder="SHP_IN")
 ###### PASO 3 CALCULO DE MEDIA-SD --->GO_E5_NDVI_MEAN_SD
 GO_E5_NDVI_MEAN_SD(ndvi_dir="NDVI/Trim/",ndvi_mean_out="NDVI/Mean/NDVI_mean.tif",ndvi_sd_out="NDVI/Mean/NDVI_sd.tif")
-  ###### ELEGIR PARA CADA CASO CUAL USAR---------------------------
+###### ELEGIR PARA CADA CASO CUAL USAR---------------------------
 ###### PASO 4A INVARIANTES POR PERCENTIL--->GO_E6_NDVI_INVARIANTS
-ndvi_invs=GO_E6_NDVI_INVARIANTS(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./NDVI/NDVI_sd.tif"),percentil=0.99)
+ndvi_invs=GO_E6_NDVI_INVARIANTS(mean="./NDVI/Mean/NDVI_mean.tif",sd="./NDVI/Mean/NDVI_sd.tif",percentil=0.99)
 ###### PASO 4B INVARIANTES POR CANTIDAD--->GO_E11_NDVI_INVARIANTS
-ndvi_invs=GO_11_NDVI_NQTY(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./NDVI/NDVI_sd.tif"),n_elements=2000)
+ndvi_invs=GO_11_NDVI_NQTY(mean="./NDVI/Mean/NDVI_mean.tif",sd="./NDVI/Mean/NDVI_sd.tif",n_elements=1000)
 ######-----------------------------------------------------------
 ###### PASO 5 GENERAR SHAPEFILE DE INVARIANTES--->GO_E8_NDVI_SHP_INVARIANTS
+GO_E8_NDVI_INVARIANTS_SHP(ndvi_invs)
 ###### USAR luego de GO_E06
-GO_E8_NDVI_INVARIANTS_SHP=function(ndvi_invs)
+GO_E8_NDVI_INVARIANTS_SHP(ndvi_invs)
  
 ###### PASO 6 OBTENER COEF DE REGRESION LINEAL--->GO_E09_LINEAR_REGRESSION
 ###### PASO 7 TRANSFORMACION LINEAL DEL RASTER--->GO_E10_RASTER_LINEAR_TRANSF
@@ -270,6 +271,7 @@ GO_E6_NDVI_INVARIANTS=function(mean="./NDVI/Mean/NDVI_mean.tif",sd="./NDVI/Mean/
   writeRaster(inv_bajo,filename=dir_out_2,format="GTiff",overwrite=TRUE)
   ##---- exporto los invariantes
   ndvi_invs=stack(inv_alto,inv_bajo)
+  names(ndvi_invs)=c("inv_alto","inv_bajo")
   return(ndvi_invs)
 }
 
@@ -282,8 +284,8 @@ GO_E6_NDVI_INVARIANTS=function(mean="./NDVI/Mean/NDVI_mean.tif",sd="./NDVI/Mean/
 ###  input: raster_stack con media-sd,n_elemets ###
 ###  output: 2 rasters con invariantes  ndvi    ###
 ###################################################
-GO_11_NDVI_NQTY=function(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./NDVI/NDVI_sd.tif"),n_elements)
-{
+GO_11_NDVI_NQTY=function(mean="./NDVI/Mean/NDVI_mean.tif",sd="./NDVI/Mean/NDVI_sd.tif",n_elements){
+
   ##-------------
   library(raster)
   library(rgdal)
@@ -291,6 +293,10 @@ GO_11_NDVI_NQTY=function(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./NDVI/N
   library(rgeos)
   library(stringr)
   ##-------------
+  mean=raster(mean)
+  sd=raster(sd)
+  n=n_elements
+  ##--------------
   ndvi_mean_stack=stack(mean,sd)
   ##---extraigo los valores del raster
   mean_values=getValues(ndvi_mean_stack[[1]])
@@ -313,6 +319,8 @@ GO_11_NDVI_NQTY=function(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./NDVI/N
   ndvi_invs=setValues(ndvi_mean_stack[[1]],interest_values)
   ndvi_invs=stack(ndvi_invs,sd)
   #setvalues(ndvi_mean_stack[[2]],interest_sd_values)
+  ##-----
+  writeRaster(ndvi_invs[[1]],filename=file.path(getwd(),"Invariants/Rasters/NDVI_NQTY.tif"),format="GTiff",overwrite=TRUE)
   return(ndvi_invs)
 }
 
@@ -321,25 +329,40 @@ GO_11_NDVI_NQTY=function(mean=raster("./NDVI/NDVI_mean.tif"),sd=raster("./NDVI/N
 ####################################################
 ####################################################
 
+#################################################
+### esta funcion extrae las coordenadas       ###
+### de los puntos invariantes de un raster    ###
+### sea el binario o el que contiene el valor ###
+### de ndvi y genera un spatial points        ###
+### con  esos puntos                          ###
+### input: raster con invariantes(resto NA)   ###
+### output: shapefile con coordenadas de invS ###
+#################################################
+
 GO_E8_NDVI_INVARIANTS_SHP=function(ndvi_invs){
-  
+  ##--------------
   library(raster)
   library(rgdal)
   library(sp)
   ##--------------
-  inv_alto_spatial=rasterToPoints(ndvi_invs[[1]],fun=NULL,spatial=TRUE)
-  inv_alto_spatial$TIPO="ALTO"
-  #writeOGR(inv_alto_spatial, dsn=".",layer="inv_points_alto", driver = "ESRI Shapefile",overwrite=T)
-  inv_bajo_spatial=rasterToPoints(ndvi_invs[[2]],fun=NULL,spatial=TRUE)
-  inv_bajo_spatial$TIPO="BAJO"
-  #writeOGR(inv_bajo_spatial, dsn=".",layer="inv_points_bajo", driver = "ESRI Shapefile",overwrite=T)
-  ##--- merge both spatial points dataframe
-  invs=bind(inv_alto_spatial,inv_bajo_spatial)
+  if(names(ndvi_invs)[[1]]=="inv_alto"){
+    inv_alto_spatial=rasterToPoints(ndvi_invs[[1]],fun=NULL,spatial=TRUE)
+    inv_alto_spatial$TIPO="ALTO"
+    #writeOGR(inv_alto_spatial, dsn=".",layer="inv_points_alto", driver = "ESRI Shapefile",overwrite=T)
+    inv_bajo_spatial=rasterToPoints(ndvi_invs[[2]],fun=NULL,spatial=TRUE)
+    inv_bajo_spatial$TIPO="BAJO"
+    #writeOGR(inv_bajo_spatial, dsn=".",layer="inv_points_bajo", driver = "ESRI Shapefile",overwrite=T)
+    ##--- merge both spatial points dataframe
+    invs=bind(inv_alto_spatial,inv_bajo_spatial)
+  }
+  if(names(ndvi_invs[[1]])=="NDVI_mean"){
+    invs=rasterToPoints(ndvi_invs[[1]],fun=NULL,spatial=TRUE)
+  }
   ### projecto los puntos en lon lat
   invs=spTransform(invs,CRS("+init=epsg:4326"))
   ##--- exporto el shapefile
-  writeOGR(invs, dsn="Invariants/Spatial_points",layer="ndvi_invariants", driver = "ESRI Shapefile",overwrite=T)
-  
+  writeOGR(invs, dsn="Invariants/Spatial_points",layer="ndvi_invariants", driver = "ESRI Shapefile",overwrite=TRUE)
+  ##--------------------
 }
 
 ####################################################
@@ -361,6 +384,7 @@ GO_E8_NDVI_INVARIANTS_SHP=function(ndvi_invs){
   library(rgdal)
   library(sp)
   ##--------------
+  
   inv_alto_spatial=rasterToPoints(ndvi_invs[[1]],fun=NULL,spatial=TRUE)
   inv_alto_spatial$TIPO="ALTO"
   #writeOGR(inv_alto_spatial, dsn=".",layer="inv_points_alto", driver = "ESRI Shapefile",overwrite=T)
