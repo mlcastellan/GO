@@ -9,11 +9,9 @@
 ## input: ndvi_sentinel_10m,ndvi_aereo,invs_shp
 ## output:ndvi_aereo_10m
 ################################################
-ndvi_sentinel_10m_file=".NDVI/"
-invs_shp_file=file.choose()
-ndvi_aereo_file=file.choose()
+
 ################################################
-GO_E9_LINEAR_REGRESSION=function(ndvi_sentinel_10m_file,invs_shp_file,ndvi_aereo_file){
+GO_E9_LINEAR_REGRESSION=function(ndvi_sentinel_10m_file="NDVI/Mean/NDVI_mean.tif",invs_shp_file="Invariants/Spatial_points/ndvi_invariants.shp",ndvi_aereo_file="NDVI/Aereo/"){
   ##---cargo librerias
   library(raster)
   library(sp)
@@ -21,7 +19,8 @@ GO_E9_LINEAR_REGRESSION=function(ndvi_sentinel_10m_file,invs_shp_file,ndvi_aereo
   library(rgeos)
   ##-----------------
   ndvi_sentinel_10m=raster(ndvi_sentinel_10m_file)
-  ndvi_aereo=raster(ndvi_aereo_file)
+  ndvi_aereo_file=list.files(ndvi_aereo_file,pattern="NDVI_mean.tif",ignore.case=TRUE,full.names=TRUE)
+  ndvi_aereo=raster(ndvi_aereo_file[[1]])
   ##-----------------
   invs_shp=readOGR(invs_shp_file)
   ##-----------------
@@ -71,4 +70,4 @@ GO_E9_LINEAR_REGRESSION=function(ndvi_sentinel_10m_file,invs_shp_file,ndvi_aereo
   return(linear_coef)
   ###-----------------------
   }
-###############---FIN DE LA FUNCION---################################3
+###############---FIN DE LA FUNCION---################################
